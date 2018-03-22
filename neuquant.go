@@ -5,7 +5,17 @@ import (
 )
 
 type Pixel struct {
-	r, g, b, a uint32
+	r, g, b, a float64
+}
+
+type SOMNetwork struct {
+	network []Neuron
+	input []Pixel
+}
+
+type Neuron struct {
+	weight Pixel
+	bias, freq float64
 }
 
 func ExtractPixels(m image.Image) []Pixel {
@@ -16,26 +26,33 @@ func ExtractPixels(m image.Image) []Pixel {
 		for x := m.Bounds().Min.X; x < w; x++ {
 			r, g, b, a := m.At(x, y).RGBA()
 			pixels = append(pixels, Pixel{
-				r: r >> 8,
-				g: g >> 8,
-				b: b >> 8,
-				a: a >>	 8,
+				r: float64(r >> 8),
+				g: float64(g >> 8),
+				b: float64(b >> 8),
+				a: float64(a >>	8),
 			})
 		}
 	}
 	return pixels
 }
 
-type SOMNetwork struct {
-	network []Neuron
-	input []Pixel
+func initNeurons(size int, method string) []Neuron {
+	neurons := make([]Neuron, size)
+
+	switch method {
+		case "default":
+			for i := 0; i < size; i++ {
+				val := float64(i)
+				neurons[i] = Neuron{ weight: Pixel{val, val, val, val}, bias: 0.0, freq: 0.0 }
+			}
+	}
+
+	return neurons
 }
 
-type Neuron struct {
-	weight Pixel
-	bias , freq float64
-}
+func NewSOMNetwork(size int, input[]Pixel) SOMNetwork {
+	neurons := initNeurons(size, "default")
+	network := SOMNetwork{neurons, input}
 
-func NewSOMNetwork(size int, inut[]Pixel) SOMNetwork {
-	
+	return network
 }
