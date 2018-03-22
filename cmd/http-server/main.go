@@ -91,7 +91,7 @@ func encodeImg(w http.ResponseWriter, img image.Image, f string) (string, int, b
 	switch f {
 	case "png":
 		err = png.Encode(&buf, img)
-	case "gif":	
+	case "gif":
 		err = gif.Encode(&buf, img, nil)
 	case "jpeg":
 		err = jpeg.Encode(&buf, img, nil)
@@ -108,6 +108,5 @@ func encodeImg(w http.ResponseWriter, img image.Image, f string) (string, int, b
 }
 
 func Quantize(img image.Image) image.Image {
-	// @TODO
 	return img
 }
