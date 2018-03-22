@@ -9,16 +9,13 @@ type Pixel struct {
 }
 
 type Neuron struct {
-	weight Pixel
+	weight     Pixel
 	bias, freq float64
 }
 
 type SOMNetwork struct {
 	network []Neuron
-	input []Pixel
-	cycles int
-	samplingFactor int
-	initialRadius int
+	input   []Pixel
 }
 
 func (n *SOMNetwork) nextPoint(nextType string) func() int {
@@ -31,10 +28,26 @@ func (n *SOMNetwork) nextPoint(nextType string) func() int {
 
 	var fn func() int
 	switch nextType {
-		case "default":
-			fn = func() int {
-				return 0
-			}
+	case "default":
+		s := len(n.input)
+		var p int
+		switch {
+		case s%prime1 != 0:
+			p = prime1
+		case s%prime2 != 0:
+			p = prime2
+		case s%prime3 != 0:
+			p = prime3
+		default:
+			p = prime4
+		}
+
+		pos := 0
+		fn = func() int {
+			pos += p
+			pos = pos % s
+			return pos
+		}
 	}
 
 	return fn
@@ -51,7 +64,7 @@ func ExtractPixels(m image.Image) []Pixel {
 				r: float64(r >> 8),
 				g: float64(g >> 8),
 				b: float64(b >> 8),
-				a: float64(a >>	8),
+				a: float64(a >> 8),
 			})
 		}
 	}
@@ -63,30 +76,43 @@ func initNeurons(size int, initType string) []Neuron {
 	// default method will use the diagonal (0,0,0,0) - (255,255,255,255)
 	// add more later
 	neurons := make([]Neuron, size)
-	initialFreq :=  1.0 / float64(size)
+	initialFreq := 1.0 / float64(size)
 
 	switch initType {
-		case "default":
-			for i := 0; i < size; i++ {
-				val := float64(i)
-				neurons[i] = Neuron{
-					weight: Pixel{val, val, val, val},
-					freq: initialFreq,
-					bias: 0.0}
+	case "default":
+		for i := 0; i < size; i++ {
+			val := float64(i)
+			neurons[i] = Neuron{
+				weight: Pixel{val, val, val, val},
+				freq:   initialFreq,
+				bias:   0.0,
 			}
+		}
 	}
 
 	return neurons
 }
 
-func NewSOMNetwork(size int, input[]Pixel) SOMNetwork {
+func NewSOMNetwork(size int, input []Pixel) SOMNetwork {
 	neurons := initNeurons(size, "default")
 	network := SOMNetwork{
 		network: neurons,
-		input: input,
-		cycles: 100,
-		samplingFactor: 3,
-		initialRadius: 32}
+		input:   input,
+	}
 
 	return network
+}
+
+func (som *SOMNetwork) Learn(cycles, samplingFactor int, initialRadius float64) {
+	l := len(som.input)
+	pixelsPerCycle := l / (cycles * samplingFactor)
+
+	c := 0
+	for c < cycles {
+		i := 0
+		for i < pixelsPerCycle {
+			i++
+		}
+		c++
+	}
 }

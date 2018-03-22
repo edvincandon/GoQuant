@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
+	"github.com/edvincandon/GoQuant"
 	"html/template"
 	"image"
 	"image/gif"
@@ -50,6 +52,8 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	som := goquant.NewSOMNetwork(256, goquant.ExtractPixels(img))
+	spew.Fdump(w, som)
 	imgOut := Quantize(img)
 
 	imgInBase64, sizeIn, ok := encodeImg(w, img, f)
