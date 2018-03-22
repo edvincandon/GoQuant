@@ -3,21 +3,36 @@ package goquant
 import (
 	"image"
 	"math"
+	"image/color"
 )
 
 type Pixel struct {
-	r, g, b, a float64
+	R, G, B, A float64
 }
 
 type Neuron struct {
-	weights     Pixel
+	weights    Pixel
 	bias, freq float64
 }
 
 type SOMNetwork struct {
-	network []Neuron
-	input   []Pixel
+	network     []Neuron
+	input       []Pixel
 	beta, gamma float64
+	alpha       AlphaFunc
+	radius      RadiusFunc
+}
+
+type AlphaFunc func(int) float64
+
+var AlphaDefault = func(cycle int) float64 {
+	return math.Exp(-0.03 * float64(cycle))
+}
+
+type RadiusFunc func(int) int
+
+var RadiusDefault = func(cycle int) int {
+	return int(math.Round(32 * math.Exp(-0.0325*float64(cycle))))
 }
 
 func ExtractPixels(m image.Image) []Pixel {
@@ -28,10 +43,10 @@ func ExtractPixels(m image.Image) []Pixel {
 		for x := m.Bounds().Min.X; x < w; x++ {
 			r, g, b, a := m.At(x, y).RGBA()
 			pixels = append(pixels, Pixel{
-				r: float64(r >> 8),
-				g: float64(g >> 8),
-				b: float64(b >> 8),
-				a: float64(a >> 8),
+				R: float64(r >> 8),
+				G: float64(g >> 8),
+				B: float64(b >> 8),
+				A: float64(a >> 8),
 			})
 		}
 	}
@@ -48,8 +63,8 @@ func initNeurons(size int, initType string) []Neuron {
 			val := float64(i)
 			neurons[i] = Neuron{
 				weights: Pixel{val, val, val, val},
-				freq:   initialFreq,
-				bias:   0.0,
+				freq:    initialFreq,
+				bias:    0.0,
 			}
 		}
 	}
@@ -62,8 +77,10 @@ func NewSOMNetwork(size int, input []Pixel) SOMNetwork {
 	network := SOMNetwork{
 		network: neurons,
 		input:   input,
-		beta: 1.0 / 1024.0,
-		gamma : 1024.0,
+		beta:    1.0 / 1024.0,
+		gamma:   1024.0,
+		alpha:   AlphaDefault,
+		radius:  RadiusDefault,
 	}
 
 	return network
@@ -105,7 +122,7 @@ func (som *SOMNetwork) nextPoint(nextType string) func() int {
 	return fn
 }
 
-func (som *SOMNetwork) findBMU(p Pixel) int {
+func (som *SOMNetwork) FindBMU(p Pixel) int {
 	l := len(som.network)
 	bestDist := math.MaxFloat64
 	bestBiasDist := bestDist
@@ -113,30 +130,46 @@ func (som *SOMNetwork) findBMU(p Pixel) int {
 	bestBiasPos := bestPos
 
 	for i := 0; i < l; i++ {
-			n := som.network[i].weights
-			dist := math.Abs(n.r - p.r) + math.Abs(n.g - p.g) + math.Abs(n.b - p.b) + math.Abs(n.a - p.a)
-			if dist < bestDist {
-				bestDist = dist
-				bestPos = i
-			}
-
-			biasDist := dist - som.network[i].bias
-			if biasDist < bestBiasDist {
-				bestBiasDist = biasDist
-				bestBiasPos = i
-			}
-
-			som.network[i].freq -= som.beta * som.network[i].freq
-			som.network[i].bias += som.beta * som.gamma * som.network[i].freq
+		n := som.network[i].weights
+		dist := math.Abs(n.R-p.R) + math.Abs(n.G-p.G) + math.Abs(n.B-p.B) + math.Abs(n.A-p.A)
+		if dist < bestDist {
+			bestDist = dist
+			bestPos = i
 		}
+
+		biasDist := dist - som.network[i].bias
+		if biasDist < bestBiasDist {
+			bestBiasDist = biasDist
+			bestBiasPos = i
+		}
+
+		som.network[i].freq -= som.beta * som.network[i].freq
+		som.network[i].bias += som.beta * som.gamma * som.network[i].freq
+	}
 
 	som.network[bestPos].freq += som.beta
 	som.network[bestPos].bias -= som.beta * som.gamma
 
-	return bestPos
+	return bestBiasPos
 }
 
-func (som *SOMNetwork) Learn(cycles, samplingFactor int, initialRadius float64) {
+func (som *SOMNetwork) FindIndex(p Pixel) int {
+	l := len(som.network)
+	bestDist := math.MaxFloat64
+	pos := 0
+	for i := 0; i < l; i++ {
+		n := som.network[i].weights
+		dist := math.Abs(n.R-p.R) + math.Abs(n.G-p.G) + math.Abs(n.B-p.B) + math.Abs(n.A-p.A)
+		if dist < bestDist {
+			bestDist = dist
+			pos = i
+		}
+	}
+
+	return pos
+}
+
+func (som *SOMNetwork) Learn(cycles, samplingFactor int) {
 	getNextPoint := som.nextPoint("default")
 	l := len(som.input)
 	pixelsPerCycle := l / (cycles * samplingFactor)
@@ -144,11 +177,41 @@ func (som *SOMNetwork) Learn(cycles, samplingFactor int, initialRadius float64) 
 	c := 0
 	for c < cycles {
 		i := 0
+		alpha := som.alpha(c)
+		radius := som.radius(c)
 		for i < pixelsPerCycle {
 			p := som.input[getNextPoint()]
-			bmu := som.findBMU(p)
+			som.updateWeights(som.FindBMU(p), radius, p, alpha)
 			i++
 		}
 		c++
+	}
+}
+
+func (som *SOMNetwork) GetPalette() []color.Color {
+	palette := make([]color.Color, 0, len(som.network))
+	for i := 0; i< len(som.network); i++ {
+		c := som.network[i].weights
+		palette = append(palette, color.RGBA{
+			R: uint8(int(c.R)),
+			G: uint8(int(c.G)),
+			B: uint8(int(c.B)),
+			A: uint8(int(c.A)),
+		})
+	}
+	return palette
+}
+
+func (som *SOMNetwork) updateWeights(bmuIndex, radius int, point Pixel, alpha float64) {
+	min := int(math.Max(0, float64(bmuIndex-radius)))
+	max := int(math.Min(float64(len(som.network)-1), float64(bmuIndex+radius)))
+	i := min
+	for i <= max {
+		a := alpha*float64(1 - (i-bmuIndex)*(i-bmuIndex)/(radius*radius))
+		som.network[i].weights.A = a*point.A + (1-a)*som.network[i].weights.A
+		som.network[i].weights.B = a*point.B + (1-a)*som.network[i].weights.B
+		som.network[i].weights.G = a*point.G + (1-a)*som.network[i].weights.G
+		som.network[i].weights.R = a*point.R + (1-a)*som.network[i].weights.R
+		i++
 	}
 }

@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
-	"github.com/edvincandon/GoQuant"
 	"html/template"
 	"image"
 	"image/gif"
@@ -13,6 +11,8 @@ import (
 	"image/png"
 	"log"
 	"net/http"
+
+	"github.com/edvincandon/GoQuant"
 )
 
 func main() {
@@ -52,8 +52,6 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	som := goquant.NewSOMNetwork(256, goquant.ExtractPixels(img))
-	spew.Fdump(w, som)
 	imgOut := Quantize(img)
 
 	imgInBase64, sizeIn, ok := encodeImg(w, img, f)
@@ -112,5 +110,24 @@ func encodeImg(w http.ResponseWriter, img image.Image, f string) (string, int, b
 }
 
 func Quantize(img image.Image) image.Image {
-	return img
+	som := goquant.NewSOMNetwork(256, goquant.ExtractPixels(img))
+	som.Learn(1, 3)
+	p := som.GetPalette()
+
+	imgOut := image.NewPaletted(img.Bounds(), p)
+
+
+	for x := 0; x < img.Bounds().Max.X; x++ {
+		for y := 0; y < img.Bounds().Max.Y; y++ {
+			r,g,b,a := img.At(x, y).RGBA()
+			i := som.FindBMU(goquant.Pixel{R: float64(r >> 8),
+				G: float64(g >> 8),
+				B: float64(b >> 8),
+				A: float64(a >> 8),
+			})
+			imgOut.SetColorIndex(x, y, uint8(i))
+		}
+	}
+
+	return imgOut
 }
