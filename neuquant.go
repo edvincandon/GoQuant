@@ -8,6 +8,11 @@ type Pixel struct {
 	r, g, b, a float64
 }
 
+type Neuron struct {
+	weight Pixel
+	bias, freq float64
+}
+
 type SOMNetwork struct {
 	network []Neuron
 	input []Pixel
@@ -16,9 +21,23 @@ type SOMNetwork struct {
 	initialRadius int
 }
 
-type Neuron struct {
-	weight Pixel
-	bias, freq float64
+func (n *SOMNetwork) nextPoint(nextType string) func() int {
+	const (
+		prime1 = 499
+		prime2 = 491
+		prime3 = 487
+		prime4 = 503
+	)
+
+	var fn func() int
+	switch nextType {
+		case "default":
+			fn = func() int {
+				return 0
+			}
+	}
+
+	return fn
 }
 
 func ExtractPixels(m image.Image) []Pixel {
@@ -39,14 +58,14 @@ func ExtractPixels(m image.Image) []Pixel {
 	return pixels
 }
 
-func initNeurons(size int, method string) []Neuron {
+func initNeurons(size int, initType string) []Neuron {
 	// sets up the neurons with the initial weights
 	// default method will use the diagonal (0,0,0,0) - (255,255,255,255)
 	// add more later
 	neurons := make([]Neuron, size)
 	initialFreq :=  1.0 / float64(size)
 
-	switch method {
+	switch initType {
 		case "default":
 			for i := 0; i < size; i++ {
 				val := float64(i)
