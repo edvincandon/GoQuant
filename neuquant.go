@@ -26,3 +26,16 @@ func ExtractPixels(m image.Image) []Pixel {
 	return pixels
 }
 
+type SOMNetwork struct {
+	network []Neuron
+	input []Pixel
+}
+
+type Neuron struct {
+	weight Pixel
+	bias , freq float64
+}
+
+func NewSOMNetwork(size int, inut[]Pixel) SOMNetwork {
+	
+}
