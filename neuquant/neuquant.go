@@ -38,8 +38,21 @@ func Quantize(img image.Image) (kohonen.SOM, []color.Color) {
 	som := kohonen.NewSOM(
 		256,
 		func(i int) kohonen.Neuron {
+			var node Pixel
+			switch(i) {
+			case 0:
+				node = Pixel{255.0, 255.0, 255.0, 255.0}
+			case 1:
+				node = Pixel{255.0, 255.0, 255.0, 0.0}
+			case 2:
+				node = Pixel{0.0, 0.0, 0.0, 255.0}
+			case 3:
+				node = Pixel{0.0, 0.0, 0.0, 0.0}
+			default:
+				node = Pixel{float64(i), float64(i), float64(i), 255.0}
+			}
 			return kohonen.Neuron{
-				Node: &Pixel{float64(i)*255.0, float64(i)*255.0, float64(i)*255.0, 0},
+				Node: &node,
 				Freq: 1.0 / 256.0,
 				Bias: 0.0,
 			}

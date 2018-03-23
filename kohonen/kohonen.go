@@ -39,11 +39,11 @@ type RadiusFunc func(int) int
 type InputFunc func(int, int) int
 
 var AlphaDefault = func(cycle int) float64 {
-	return math.Exp(-0.07777 * float64(cycle))
+	return math.Exp(-0.097 * float64(cycle))
 }
 
 var RadiusDefault = func(cycle int) int {
-	return int(math.Round(20 * math.Exp(-0.0325*float64(cycle))))
+	return int(math.Round(28 * math.Exp(-0.00925*float64(cycle))))
 }
 
 var InputDefault = func(i, l int) int {
@@ -102,7 +102,7 @@ func (som *SOM) findClosestNeuronIndex(n Node, updateNetwork bool) int {
 	bestPos := 0
 	bestBiasPos := 0
 
-	for i := 0; i < som.size; i++ {
+	for i := 4; i < som.size; i++ {
 		d := n.Distance(som.network[i].Node)
 		if d < bestDistance {
 			bestDistance = d
