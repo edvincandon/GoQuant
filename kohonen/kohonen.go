@@ -39,11 +39,11 @@ type RadiusFunc func(int) int
 type InputFunc func(int, int) int
 
 var AlphaDefault = func(cycle int) float64 {
-	return math.Exp(-0.03 * float64(cycle))
+	return math.Exp(-0.07777 * float64(cycle))
 }
 
 var RadiusDefault = func(cycle int) int {
-	return int(math.Round(32 * math.Exp(-0.0325*float64(cycle))))
+	return int(math.Round(20 * math.Exp(-0.0325*float64(cycle))))
 }
 
 var InputDefault = func(i, l int) int {

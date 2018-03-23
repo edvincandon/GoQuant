@@ -16,15 +16,10 @@ func (p *Pixel) Distance(node kohonen.Node) float64 {
 	if !ok {
 		panic("cannot compare without a pixel")
 	}
+
 	baseDist := math.Abs(n.R-p.R) + math.Abs(n.G-p.G) + math.Abs(n.B-p.B) + math.Abs(n.A-p.A)
 
-	deltaR := n.R - p.R
-	deltaG := n.G - p.G
-	deltaB := n.B - p.B
-	deltaAlpha := n.A - p.A
-	rgbDistanceSquared := (deltaR*deltaR + deltaG*deltaG + deltaB*deltaB) / 3.0
-
-	return deltaAlpha*deltaAlpha/2.0 + rgbDistanceSquared*n.A*p.A/(255.0*baseDist)
+	return baseDist
 }
 
 func (p *Pixel) Move(a float64, node kohonen.Node) {
@@ -44,7 +39,7 @@ func Quantize(img image.Image) (kohonen.SOM, []color.Color) {
 		256,
 		func(i int) kohonen.Neuron {
 			return kohonen.Neuron{
-				Node: &Pixel{float64(i), float64(i), float64(i), float64(i)},
+				Node: &Pixel{float64(i)*255.0, float64(i)*255.0, float64(i)*255.0, 0},
 				Freq: 1.0 / 256.0,
 				Bias: 0.0,
 			}
@@ -70,10 +65,10 @@ func Quantize(img image.Image) (kohonen.SOM, []color.Color) {
 			panic("expected pixel")
 		}
 		colors = append(colors, color.RGBA{
-			R: uint8(int(p.R)),
-			G: uint8(int(p.G)),
-			B: uint8(int(p.B)),
-			A: uint8(int(p.A)),
+			R: uint8(p.R / p.A),
+			G: uint8(p.G / p.A),
+			B: uint8(p.B / p.A),
+			A: uint8(p.A),
 		})
 	}
 
@@ -88,9 +83,9 @@ func ExtractPixels(m image.Image) []kohonen.Node {
 		for x := m.Bounds().Min.X; x < w; x++ {
 			r, g, b, a := m.At(x, y).RGBA()
 			pixels = append(pixels, &Pixel{
-				R: float64(r >> 8),
-				G: float64(g >> 8),
-				B: float64(b >> 8),
+				R: float64(r >> 8) * float64(a >> 8),
+				G: float64(g >> 8) * float64(a >> 8),
+				B: float64(b >> 8) * float64(a >> 8),
 				A: float64(a >> 8),
 			})
 		}
