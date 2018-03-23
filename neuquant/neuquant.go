@@ -2,6 +2,8 @@ package neuquant
 
 import (
 	"github.com/edvincandon/GoQuant/kohonen"
+	"image"
+	"image/color"
 	"math"
 )
 
@@ -20,9 +22,9 @@ func (p *Pixel) Distance(node kohonen.Node) float64 {
 	deltaG := n.G - p.G
 	deltaB := n.B - p.B
 	deltaAlpha := n.A - p.A
-	rgbDistanceSquared := (deltaR * deltaR + deltaG * deltaG + deltaB * deltaB) / 3.0
+	rgbDistanceSquared := (deltaR*deltaR + deltaG*deltaG + deltaB*deltaB) / 3.0
 
-	return deltaAlpha * deltaAlpha / 2.0 + rgbDistanceSquared * n.A * p.A / (255.0 * baseDist)
+	return deltaAlpha*deltaAlpha/2.0 + rgbDistanceSquared*n.A*p.A/(255.0*baseDist)
 }
 
 func (p *Pixel) Move(a float64, node kohonen.Node) {
@@ -35,4 +37,63 @@ func (p *Pixel) Move(a float64, node kohonen.Node) {
 	p.B = a*n.B + (1-a)*p.B
 	p.G = a*n.G + (1-a)*p.G
 	p.R = a*n.R + (1-a)*p.R
+}
+
+func Quantize(img image.Image) (kohonen.SOM, []color.Color) {
+	som := kohonen.NewSOM(
+		256,
+		func(i int) kohonen.Neuron {
+			return kohonen.Neuron{
+				Node: &Pixel{float64(i), float64(i), float64(i), float64(i)},
+				Freq: 1.0 / 256.0,
+				Bias: 0.0,
+			}
+		},
+		kohonen.SOMConfig{
+			NCycle:   100,
+			Sampling: 1,
+			Beta:     1.0 / 1024.0,
+			Gamma:    1024.0,
+			Alpha:    kohonen.AlphaDefault,
+			Radius:   kohonen.RadiusDefault,
+			Input:    kohonen.InputDefault,
+		},
+	)
+
+	pixels := ExtractPixels(img)
+	nodes := som.Learn(pixels)
+
+	colors := make([]color.Color, 0, 256)
+	for _, n := range nodes {
+		p, ok := n.(*Pixel)
+		if !ok {
+			panic("expected pixel")
+		}
+		colors = append(colors, color.RGBA{
+			R: uint8(int(p.R)),
+			G: uint8(int(p.G)),
+			B: uint8(int(p.B)),
+			A: uint8(int(p.A)),
+		})
+	}
+
+	return som, colors
+}
+
+func ExtractPixels(m image.Image) []kohonen.Node {
+	w := m.Bounds().Max.X
+	h := m.Bounds().Max.Y
+	pixels := make([]kohonen.Node, 0, w*h)
+	for y := m.Bounds().Min.Y; y < h; y++ {
+		for x := m.Bounds().Min.X; x < w; x++ {
+			r, g, b, a := m.At(x, y).RGBA()
+			pixels = append(pixels, &Pixel{
+				R: float64(r >> 8),
+				G: float64(g >> 8),
+				B: float64(b >> 8),
+				A: float64(a >> 8),
+			})
+		}
+	}
+	return pixels
 }
