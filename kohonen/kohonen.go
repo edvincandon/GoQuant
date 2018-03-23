@@ -10,8 +10,8 @@ type Node interface {
 }
 
 type Neuron struct {
-	n          Node
-	bias, freq float64
+	Node       Node
+	Bias, Freq float64
 }
 
 type SOM struct {
@@ -53,7 +53,7 @@ var InputDefault = func(i, l int) int {
 		if l%p != 0 {
 			continue
 		}
-		return i*p % l
+		return i * p % l
 	}
 
 	return i
@@ -72,21 +72,21 @@ func NewSOM(size int, init InitNeuronFunc, config SOMConfig) SOM {
 }
 
 func (som *SOM) Learn(in []Node) []Node {
-	nPerCycle := som.size / (som.config.NCycle * som.config.Sampling)
+	nPerCycle := len(in) / (som.config.NCycle * som.config.Sampling)
 
 	for c := 0; c < som.config.NCycle; c++ {
 		alpha := som.config.Alpha(c)
 		radius := som.config.Radius(c)
 		for i := 0; i < nPerCycle; i++ {
-			inputIndex := som.config.Input(c*nPerCycle + i, len(in))
+			inputIndex := som.config.Input(c*nPerCycle+i, len(in))
 			closestNeuronIndex := som.findClosestNeuronIndex(in[inputIndex], true)
-			som.updateNetwork(closestNeuronIndex, radius, in[i], alpha)
+			som.updateNetwork(closestNeuronIndex, radius, in[inputIndex], alpha)
 		}
 	}
 
 	nodes := make([]Node, 0, som.size)
 	for _, neuron := range som.network {
-		nodes = append(nodes, neuron.n)
+		nodes = append(nodes, neuron.Node)
 	}
 
 	return nodes
@@ -103,7 +103,7 @@ func (som *SOM) findClosestNeuronIndex(n Node, updateNetwork bool) int {
 	bestBiasPos := 0
 
 	for i := 0; i < som.size; i++ {
-		d := n.Distance(som.network[i].n)
+		d := n.Distance(som.network[i].Node)
 		if d < bestDistance {
 			bestDistance = d
 			bestPos = i
@@ -113,19 +113,19 @@ func (som *SOM) findClosestNeuronIndex(n Node, updateNetwork bool) int {
 			continue
 		}
 
-		biasDistance := d - som.network[i].bias
+		biasDistance := d - som.network[i].Bias
 		if biasDistance < bestBiasDistance {
 			bestBiasDistance = biasDistance
 			bestBiasPos = i
 		}
 
-		som.network[i].bias += som.config.Beta
-		som.network[i].freq -= som.config.Beta * som.network[i].freq
+		som.network[i].Bias += som.config.Beta
+		som.network[i].Freq -= som.config.Beta * som.network[i].Freq
 	}
 
 	if updateNetwork {
-		som.network[bestPos].bias -= som.config.Beta * som.config.Gamma
-		som.network[bestPos].freq += som.config.Beta
+		som.network[bestPos].Bias -= som.config.Beta * som.config.Gamma
+		som.network[bestPos].Freq += som.config.Beta
 
 		return bestBiasPos
 	}
@@ -141,6 +141,6 @@ func (som *SOM) updateNetwork(closestNeuronIndex, radius int, target Node, alpha
 		q := float64(i - closestNeuronIndex)
 		r2 := float64(radius * radius)
 		a := alpha * (r2 - q*q) / r2
-		som.network[i].n.Move(a, target)
+		som.network[i].Node.Move(a, target)
 	}
 }
